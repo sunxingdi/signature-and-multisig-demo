@@ -14,27 +14,9 @@ contract Signature {
         address signer
     );
 
-    function encodeTransactionData(
-        address to,        //目标地址
-        uint256 value,     //支付ETH
-        bytes memory data, //calldata
-        uint256 nonce,     //交易次数
-        uint256 chainid     //链ID
-    ) public pure returns (bytes32) {
-        bytes32 txHash =
-            keccak256(
-                abi.encodePacked(
-                    to,
-                    value,
-                    keccak256(data),
-                    nonce,
-                    chainid
-                )
-            );
-
-        return txHash;
+    function getMessageHash(string memory _message) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_message));
     }
-
 
     /// @param @dev 计算以太坊签名
     /// @param hash 消息
@@ -43,40 +25,27 @@ contract Signature {
     * 以及`EIP191`:https://eips.ethereum.org/EIPS/eip-191`
     * 添加"\x19Ethereum Signed Message:\n32"字段，防止签名的是可执行交易。
     */
-    function toEthSignedHash(bytes32 hash) public pure returns (bytes32) {
+    function ethSignedMessageHash(bytes32 hash) public pure returns (bytes32) {
         // 哈希的长度为32
         return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
     }
 
     // @dev 从_msgHash和签名_signature中恢复signer地址
     function recoverSigner(
-            address to,
-            uint256 value,
-            bytes memory data,
-            uint256 nonce,
-            uint256 chainid,
-            
+            // string memory message,
+            bytes32 message,
             bytes memory _signature
-        ) public returns (address){
+        ) public pure returns (address){
 
         // 检查签名长度，65是标准r,s,v签名的长度
         require(_signature.length == 65, "invalid signature length");
 
-        //交易数据编码+以太坊签名
-
-        bytes32 txHash = encodeTransactionData (
-                to,
-                value,
-                data,
-                nonce,
-                chainid
-            );
-
-        bytes32 ethSignedHash = toEthSignedHash(txHash);
-
         bytes32 r;
         bytes32 s;
         uint8 v;
+
+        // bytes32 messageHash = getMessageHash(message);
+        // bytes32 ethSigned = ethSignedMessageHash(messageHash);
 
         // 目前只能用assembly (内联汇编)来从签名中获得r,s,v的值
         assembly {
@@ -95,10 +64,10 @@ contract Signature {
         }
 
         // 使用ecrecover(全局函数)：利用 msgHash 和 r,s,v 恢复 signer 地址
-        address signer  = ecrecover(ethSignedHash, v, r, s);
+        address signer  = ecrecover(message, v, r, s);
 
-        emit recoverSignerEvent(txHash,ethSignedHash,r,s,v,signer);
+        // emit recoverSignerEvent(message,message,r,s,v,signer);
 
-        // return signer;
+        return signer;
     }    
 }

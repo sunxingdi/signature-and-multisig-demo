@@ -1,12 +1,9 @@
 import { ethers } from "hardhat";
-// import { Contract, providers } from "ethers";
 
-const provider = new ethers.JsonRpcProvider()
-const abiCoder = new ethers.AbiCoder();
 console.log("\n", "ethers version: ", ethers.version);
 
-// const privateKey = '0x227dbb8586117d55284e26620bc76534dfbd2394be34cf4a09cb775d593b6f2b'; // hardhat本地网络内置账户私钥
-const privateKey = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+// hardhat本地网络内置账户私钥，0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+const privateKey = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'; 
 
 async function main() {
 
@@ -16,82 +13,57 @@ async function main() {
   const SigContract = await SignatureContract.deploy();
   console.log("合约地址:", SigContract.target);
 
-  // console.log("\n", "设置过滤器，监听事件...")
-  // const filter = SigContract.filters.recoverSignerEvent();
-  // // SigContract.on(filter, (eventArgs) => {
-  // SigContract.once(filter, (eventArgs) => {
-  //   console.log('Event:', eventArgs);
-  // });
+  console.log("\n", "设置过滤器，监听事件...")
+  const filter = SigContract.filters.recoverSignerEvent();
+  // SigContract.on(filter, (eventArgs) => {
+  SigContract.once(filter, (eventArgs) => {
+    console.log('Event:', eventArgs.args);
+  });
 
   console.log("\n", "获取账户...")
   const [fromSigner, toSigner] = await ethers.getSigners();
 
-  console.log("\n", "构造交易...")
-  // const transaction = {
-  //   // from: fromSigner.address, //交易数据不需要传递from, 可以从签名中恢复
-	// 	to: toSigner.address,
-	// 	value: ethers.parseEther('10'),
-	// 	data: '0x',
-	// 	gasLimit: '22000',
-	// 	maxFeePerGas: ethers.parseUnits('20', 'gwei'),
-  //   maxPriorityFeePerGas: ethers.parseUnits('5', 'gwei'),
-  //   // nonce: await provider.getTransactionCount(fromAddress), //获取真实nonce
-	// 	nonce: 9527,
-	// 	type: 2,
-	// 	chainId: await provider.getNetwork().then(network => network.chainId)
-  // }
-  const transaction = {
-		to: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-		value: ethers.parseEther('1'),
-		data: '0xE0A293E08F72454CEd99E1769c3ebd21fD2C20a1',
-		gasLimit: '22000',
-		maxFeePerGas: ethers.parseUnits('20', 'gwei'),
-		maxPriorityFeePerGas: ethers.parseUnits('5', 'gwei'),
-		nonce: 1,
-		type: 2,
-		chainId: 31337, // 31337
-}  
-  console.log(transaction);
+  console.log("###############################################################")
 
-  console.log("\n", "交易序列化...")
-  let serializedTransaction = await ethers.Transaction.from(transaction).unsignedSerialized
-  console.log("交易序列化: ", serializedTransaction);
+  let _account = '0x5B38Da6a701c568545dCfcB03FcB875f56beddC4';
+  let _tokenId = 0;
+  console.log("\n", "原始消息:          ", ['address', 'uint256'], [_account, _tokenId]);
 
-  console.log("\n", "计算交易哈希...")
-  let hash = ethers.keccak256(serializedTransaction)
-  console.log("交易哈希: ", hash);
+  let messageHash = ethers.solidityPackedKeccak256(['address', 'uint256'], [_account, _tokenId])
+  console.log("\n", "消息哈希:          ", messageHash);
 
-  console.log("\n", "对交易哈希签名...")
-  let signingKey = new ethers.SigningKey(privateKey)
-  let signature = await signingKey.sign(hash)
+  let ethSignedmessageHash = ethers.solidityPackedKeccak256(['string', 'bytes32'], ["\x19Ethereum Signed Message:\n32", messageHash])
+  console.log("\n", "以太坊签名消息哈希: ", ethSignedmessageHash);
+
+  //#################################################################################
+  let signingKey = new ethers.SigningKey(privateKey);
+
+  let ethSignedmessageHashSigned = await signingKey.sign(ethSignedmessageHash);
+  console.log("\n", "SigningKey签名:  ", ethSignedmessageHashSigned)
+
+  let { r, s, v } = ethSignedmessageHashSigned
+  console.log("r: ", r, "\ns: ", s, "\nv: ", v)
+
+  //#################################################################################
+  const wallet = new ethers.Wallet(privateKey);
+  console.log("\n", "walletAddress: ", wallet.address)
+
+  let messageHashSigned = await wallet.signMessage(Uint8Array.from(Buffer.from(messageHash.slice(2), 'hex')));
+  console.log("\n", "Wallet签名:           ", messageHashSigned)
   
-  // let wallet = new ethers.Wallet(privateKey); // 创建钱包对象
-
-  console.log("交易签名: ", signature);
-  let { v, r, s } = signature
-  console.log("v: ", v, "\nr: ", r, "\ns: ", s);
-
-  //私钥签名：###############################################################
-  
-  // const wallet = new ethers.Wallet(privateKey); // 创建钱包对象
-  // let signedTransaction = await wallet.signTransaction(transaction)
-
-  // console.log("签名交易：\n", signedTransaction);
-
+  let messageHashSigned2 = await fromSigner.signMessage(Uint8Array.from(Buffer.from(messageHash.slice(2), 'hex')));
+  console.log("\n", "fromSigner签名:           ", messageHashSigned2)    
 
   //#########################################################################
-  // console.log("\n", "验证签名恢复公钥...")
-  // const Signer = await SigContract.recoverSigner(
-  //   toAddress,
-  //   value,
-  //   data,
-  //   nonce,
-  //   chainId,
-  //   signedTransaction //签名
-  // );
-  // console.log("恢复公钥：  ", Signer)
+  console.log("\n", "验证签名恢复公钥...")
+  const Signer = await SigContract.recoverSigner(
+    ethSignedmessageHash,
+    messageHashSigned,
+  );
+  console.log("恢复公钥：  ", Signer)
 
   // const receipt = await Signer.wait();
+  // console.log('Transaction Receipt:', receipt); 
   // console.log('Transaction Receipt:', receipt);  
 }
 
