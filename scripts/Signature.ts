@@ -59,12 +59,22 @@ async function main() {
   console.log("\n", "getSigners签名: ", messageHashSigned2)    
 
   console.log("###############################################################")
-  console.log("\n", "验证签名恢复公钥...")
+  console.log("\n", "Ethers恢复公钥...")
+  const recoveredPublicKey = ethers.SigningKey.recoverPublicKey(ethSignedmessageHash, messageHashSigned);
+  console.log("\n", "Ethers恢复公钥(未压缩)：", recoveredPublicKey)
+  const compressedPublicKey = ethers.computeAddress(recoveredPublicKey);
+  console.log("\n", "Ethers恢复公钥(压缩后)：", compressedPublicKey)
+
+  console.log("###############################################################")
+  console.log("\n", "Solidity恢复公钥...")
   const Signer = await SigContract.recoverSigner(
     ethSignedmessageHash,
     messageHashSigned,
   );
-  console.log("\n", "恢复公钥：  ", Signer)
+  console.log("\n", "Solidity恢复公钥：  ", Signer)
+
+
+
 
   // const receipt = await Signer.wait();
   // console.log('Transaction Receipt:', receipt); 

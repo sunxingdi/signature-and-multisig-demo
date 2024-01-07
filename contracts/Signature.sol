@@ -30,7 +30,7 @@ contract Signature {
         return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
     }
 
-    // @dev 从_msgHash和签名_signature中恢复signer地址
+    // @dev 从message和签名_signature中恢复signer地址
     function recoverSigner(
             // string memory message,
             bytes32 message,
@@ -43,9 +43,6 @@ contract Signature {
         bytes32 r;
         bytes32 s;
         uint8 v;
-
-        // bytes32 messageHash = getMessageHash(message);
-        // bytes32 ethSigned = ethSignedMessageHash(messageHash);
 
         // 目前只能用assembly (内联汇编)来从签名中获得r,s,v的值
         assembly {
@@ -63,7 +60,7 @@ contract Signature {
             v := byte(0, mload(add(_signature, 0x60)))
         }
 
-        // 使用ecrecover(全局函数)：利用 msgHash 和 r,s,v 恢复 signer 地址
+        // 使用ecrecover(全局函数)：利用 message 和 r,s,v 恢复 signer 地址
         address signer  = ecrecover(message, v, r, s);
 
         // emit recoverSignerEvent(message,message,r,s,v,signer);
