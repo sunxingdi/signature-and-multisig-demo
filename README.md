@@ -116,17 +116,17 @@ signer是恢复出来的公钥，对比若与发送消息的地址一致，则�
 
 ### 函数汇总
 
-打包+哈希：
+- 打包+哈希：
 
-Ethers: ethers.solidityPackedKeccak256()
+  Ethers: ethers.solidityPackedKeccak256()
 
-Solidity: keccak256(abi.encodePacked())
+  Solidity: keccak256(abi.encodePacked())
 
-恢复公钥：
+- 恢复公钥：
 
-Ethers: 
+  Ethers: ethers.SigningKey.recoverPublicKey()
 
-Solidity: ecrecover()
+  Solidity: ecrecover()
 
 ### metamask浏览器签名方法
 
